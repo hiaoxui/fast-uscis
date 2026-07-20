@@ -1,0 +1,11 @@
+services:
+  fusi:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    init: true
+    shm_size: "1gb"
+    volumes:
+      - ./data:/data
+    command: ["/data"]
+    restart: "no"

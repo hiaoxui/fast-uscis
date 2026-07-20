@@ -1,0 +1,24 @@
+[accounts]
+
+[accounts.example]
+email = "user@example.com"
+password = "replace-with-password"
+totp_secret = "REPLACE_WITH_BASE32_TOTP_SECRET"
+
+[accounts.example.receipts]
+I-485 = "IOE1234567890"
+I-765 = "IOE1234567891"
+I-131 = "IOE1234567892"
+
+[accounts.second_example]
+email = "second-user@example.com"
+password = "replace-with-another-password"
+totp_secret = "REPLACE_WITH_ANOTHER_BASE32_TOTP_SECRET"
+
+[accounts.second_example.receipts]
+I-130 = "IOE2234567890"
+
+[telegram]
+api = "123456789:replace-with-bot-token"
+no_update_chat_id = "123456789"
+update_chat_id = "098764"
