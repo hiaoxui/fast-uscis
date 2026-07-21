@@ -32,8 +32,13 @@ def build_page_with_response(*, status: int = 200, payload: dict | None = None) 
 
 
 class SubmitVerificationCodeTests(unittest.TestCase):
+    @patch("fusi.uscis.time.time", return_value=15.0)
     @patch("fusi.uscis.pyotp.TOTP.now", return_value="123456")
-    def test_allows_only_one_attempt(self, _: MagicMock) -> None:
+    def test_allows_only_one_attempt(
+        self,
+        _: MagicMock,
+        __: MagicMock,
+    ) -> None:
         session = USCISSession()
         page = build_page_with_response()
 
@@ -49,8 +54,28 @@ class SubmitVerificationCodeTests(unittest.TestCase):
         page.get_by_label.return_value.fill.assert_called_once_with("123456")
         page.get_by_test_id.return_value.click.assert_called_once_with()
 
+    @patch("fusi.uscis.time.time", return_value=29.0)
     @patch("fusi.uscis.pyotp.TOTP.now", return_value="123456")
-    def test_returns_rejected_otp_state_to_caller(self, _: MagicMock) -> None:
+    def test_waits_until_next_totp_window_near_expiration(
+        self,
+        _: MagicMock,
+        __: MagicMock,
+    ) -> None:
+        session = USCISSession(login_delay_ms=0)
+        page = build_page_with_response()
+
+        session._submit_verification_code(page, build_account())
+
+        page.wait_for_timeout.assert_called_once_with(1_100)
+        page.get_by_label.return_value.fill.assert_called_once_with("123456")
+
+    @patch("fusi.uscis.time.time", return_value=15.0)
+    @patch("fusi.uscis.pyotp.TOTP.now", return_value="123456")
+    def test_returns_rejected_otp_state_to_caller(
+        self,
+        _: MagicMock,
+        __: MagicMock,
+    ) -> None:
         session = USCISSession()
         page = build_page_with_response(
             payload={"authentication_state": "incorrect_2fa_code_received"}

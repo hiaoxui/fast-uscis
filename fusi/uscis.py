@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 import json
+import time
 from typing import Any
 
 import pyotp
@@ -199,6 +200,7 @@ class USCISSession:
             timeout=self.sign_in_timeout_ms,
         ) as verification_info:
             self._pause_for_login_step(page)
+            self._wait_for_fresh_totp_window(page)
             page.get_by_label("Secure Verification Code", exact=False).fill(
                 pyotp.TOTP(account.totp_secret).now()
             )
@@ -210,6 +212,14 @@ class USCISSession:
             raise USCISVerificationError(self._extract_response_error(verification_response))
 
         return self._safe_json(verification_response)
+
+    def _wait_for_fresh_totp_window(self, page: Page) -> None:
+        interval_seconds = 30
+        minimum_validity_seconds = 10
+        remaining_seconds = interval_seconds - (time.time() % interval_seconds)
+        if remaining_seconds < minimum_validity_seconds:
+            wait_ms = int((remaining_seconds + 0.1) * 1_000)
+            page.wait_for_timeout(wait_ms)
 
     def _extract_page_error(self, page: Page) -> str | None:
         alerts = page.locator("[role='alert'], [data-testid*='alert-message']")
