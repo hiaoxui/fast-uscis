@@ -112,7 +112,7 @@ def main(argv: list[str] | None = None) -> int:
 
         save_cache(cache_path, cache)
         if not outputs:
-            output = "all cases are not updated"
+            output = "No case updates were found."
             print(output)
             if app_config.telegram is not None:
                 send_message_sync(

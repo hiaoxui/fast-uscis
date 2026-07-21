@@ -67,7 +67,7 @@ Notes:
 - Each account must define at least one receipt under `receipts`.
 - Every run checks every account and receipt configured in `config.toml`.
 - First-run results, case updates, and failures are sent to `update_chat_id`.
-- The `all cases are not updated` summary is sent only to `no_update_chat_id`.
+- The `No case updates were found.` summary is sent only to `no_update_chat_id`.
 - Send the bot a message first, then obtain your chat ID from the bot's `getUpdates` response.
 - Do not commit `config.toml`.
 
@@ -178,7 +178,7 @@ example I-485 got an update at 2026-06-24
 When no timestamps changed, it prints:
 
 ```text
-all cases are not updated
+No case updates were found.
 ```
 
 Example shape:

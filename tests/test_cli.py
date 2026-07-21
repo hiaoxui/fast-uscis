@@ -106,11 +106,11 @@ class MainTests(unittest.TestCase):
             exit_code = main(["/var/lib/fusi"])
 
         self.assertEqual(exit_code, 0)
-        self.assertEqual(stdout.getvalue(), "all cases are not updated\n")
+        self.assertEqual(stdout.getvalue(), "No case updates were found.\n")
         send_message_mock.assert_called_once_with(
             telegram,
             "no-updates",
-            "all cases are not updated",
+            "No case updates were found.",
         )
         first_session.login.assert_called_once_with(first_account)
         first_session.fetch_case.assert_called_once_with("IOE1")
