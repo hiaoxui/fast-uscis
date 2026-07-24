@@ -13,27 +13,28 @@ from datetime import datetime, timezone
 
 
 class CaseOutputTests(unittest.TestCase):
-    def test_first_run_then_unchanged_then_updated(self) -> None:
+    def test_uses_case_updated_at_instead_of_event_timestamps(self) -> None:
         cache: dict[str, dict[str, str | None]] = {}
-        original_events = [{"updatedAt": "2026-06-24", "eventCode": "FTA0"}]
+        events: list[dict[str, object]] = [
+            {"updatedAt": "2026-07-23", "eventCode": "IAF"}
+        ]
 
         first_output = case_output(
-            "primary", "I-485", "IOE1", original_events, cache
+            "primary", "I-485", "IOE1", "2026-06-24", events, cache
         )
         unchanged_output = case_output(
-            "primary", "I-485", "IOE1", original_events, cache
+            "primary", "I-485", "IOE1", "2026-06-24", events, cache
         )
-        updated_events = [{"updatedAt": "2026-07-19", "eventCode": "NEW"}]
         updated_output = case_output(
-            "primary", "I-485", "IOE1", updated_events, cache
+            "primary", "I-485", "IOE1", "2026-07-19", events, cache
         )
 
-        self.assertEqual(first_output, json.dumps(original_events, indent=2))
+        self.assertEqual(first_output, json.dumps(events, indent=2))
         self.assertIsNone(unchanged_output)
         self.assertEqual(
             updated_output,
             "primary I-485 got an update at 2026-07-19\n"
-            f"{json.dumps(updated_events, indent=2)}",
+            f"{json.dumps(events, indent=2)}",
         )
         self.assertEqual(cache["primary"]["IOE1"], "2026-07-19")
 
@@ -75,13 +76,15 @@ class MainTests(unittest.TestCase):
             "second": {"IOE2": "2026-07-01"},
         }
         first_result = SimpleNamespace(
-            payload={"data": {}},
+            payload={"data": {"updatedAt": "2026-06-24"}},
             receipt_number="IOE1",
+            updated_at="2026-06-24",
             events=[{"updatedAt": "2026-06-24"}],
         )
         second_result = SimpleNamespace(
-            payload={"data": {}},
+            payload={"data": {"updatedAt": "2026-07-01"}},
             receipt_number="IOE2",
+            updated_at="2026-07-01",
             events=[{"updatedAt": "2026-07-01"}],
         )
 

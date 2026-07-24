@@ -6,7 +6,6 @@ import sys
 from fusi.cache import (
     CaseCache,
     cached_timestamp,
-    latest_updated_at,
     load_cache,
     save_cache,
     update_timestamp,
@@ -104,6 +103,7 @@ def main(argv: list[str] | None = None) -> int:
                         account.name,
                         label,
                         result.receipt_number,
+                        result.updated_at,
                         result.events,
                         cache,
                     )
@@ -175,20 +175,20 @@ def case_output(
     account_name: str,
     label: str,
     receipt_number: str,
+    updated_at: str | None,
     events: list[dict[str, object]],
     cache: CaseCache,
 ) -> str | None:
-    timestamp = latest_updated_at(events)
     was_cached, previous_timestamp = cached_timestamp(
         cache,
         account_name,
         receipt_number,
     )
-    update_timestamp(cache, account_name, receipt_number, timestamp)
+    update_timestamp(cache, account_name, receipt_number, updated_at)
 
     body = json.dumps(events, indent=2)
     if not was_cached:
         return body
-    if previous_timestamp != timestamp:
-        return f"{account_name} {label} got an update at {timestamp}\n{body}"
+    if previous_timestamp != updated_at:
+        return f"{account_name} {label} got an update at {updated_at}\n{body}"
     return None

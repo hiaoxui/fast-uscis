@@ -5,7 +5,6 @@ import unittest
 
 from fusi.cache import (
     cached_timestamp,
-    latest_updated_at,
     load_cache,
     save_cache,
     update_timestamp,
@@ -13,15 +12,6 @@ from fusi.cache import (
 
 
 class CaseCacheTests(unittest.TestCase):
-    def test_finds_latest_updated_at(self) -> None:
-        events = [
-            {"updatedAt": "2026-04-24"},
-            {"updatedAt": "2026-06-24"},
-            {"updatedAt": None},
-        ]
-
-        self.assertEqual(latest_updated_at(events), "2026-06-24")
-
     def test_distinguishes_missing_case_from_cached_none(self) -> None:
         cache: dict[str, dict[str, str | None]] = {}
 

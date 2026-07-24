@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from fusi.config import AccountConfig
-from fusi.uscis import USCISSession, USCISVerificationError
+from fusi.uscis import USCISCaseResult, USCISSession, USCISVerificationError
 
 
 def build_account() -> AccountConfig:
@@ -29,6 +29,21 @@ def build_page_with_response(*, status: int = 200, payload: dict | None = None) 
     page = MagicMock()
     page.expect_response.return_value = expectation
     return page
+
+
+class USCISCaseResultTests(unittest.TestCase):
+    def test_updated_at_comes_from_case_data(self) -> None:
+        result = USCISCaseResult(
+            receipt_number="IOE1",
+            payload={
+                "data": {
+                    "updatedAt": "2026-06-24",
+                    "events": [{"updatedAt": "2026-07-23"}],
+                }
+            },
+        )
+
+        self.assertEqual(result.updated_at, "2026-06-24")
 
 
 class SubmitVerificationCodeTests(unittest.TestCase):

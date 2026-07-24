@@ -32,6 +32,11 @@ class USCISCaseResult:
     payload: dict[str, Any]
 
     @property
+    def updated_at(self) -> str | None:
+        raw_updated_at = self.payload['data'].get("updatedAt")
+        return raw_updated_at if isinstance(raw_updated_at, str) else None
+
+    @property
     def events(self) -> list[dict[str, Any]]:
         raw_events = self.payload['data'].get("events", [])
         return raw_events if isinstance(raw_events, list) else []

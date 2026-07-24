@@ -44,15 +44,6 @@ def save_cache(path: Path, cache: CaseCache) -> None:
         raise CacheError(f"Could not write case cache {path}: {exc}") from exc
 
 
-def latest_updated_at(events: list[dict[str, object]]) -> str | None:
-    timestamps = [
-        timestamp
-        for event in events
-        if isinstance((timestamp := event.get("updatedAt")), str) and timestamp
-    ]
-    return max(timestamps, default=None)
-
-
 def cached_timestamp(
     cache: CaseCache,
     account_name: str,
