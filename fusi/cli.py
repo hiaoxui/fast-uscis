@@ -157,7 +157,7 @@ def main(argv: list[str] | None = None) -> int:
             try:
                 send_message_sync(
                     app_config.telegram,
-                    app_config.telegram.update_chat_id,
+                    app_config.telegram.no_update_chat_id,
                     message,
                 )
             except TelegramDeliveryError as telegram_exc:

@@ -66,8 +66,8 @@ Notes:
 - Each account must define `email`, `password`, and `totp_secret`.
 - Each account must define at least one receipt under `receipts`.
 - Every run checks every account and receipt configured in `config.toml`.
-- First-run results, case updates, and failures are sent to `update_chat_id`.
-- The `No case updates were found.` summary is sent only to `no_update_chat_id`.
+- First-run results and case updates are sent to `update_chat_id`.
+- Failures and the `No case updates were found.` summary are sent to `no_update_chat_id`.
 - Send the bot a message first, then obtain your chat ID from the bot's `getUpdates` response.
 - Do not commit `config.toml`.
 
@@ -124,7 +124,7 @@ The lock prevents overlapping checks if one run takes longer than expected. Buil
 
 ### Failure Guard
 
-Failed runs are appended to `data/failure-log.jsonl` with a UTC timestamp and error message. When Telegram configuration was loaded successfully, the failure is also sent to the configured chat.
+Failed runs are appended to `data/failure-log.jsonl` with a UTC timestamp and error message. When Telegram configuration was loaded successfully, the failure is also sent to `no_update_chat_id`.
 
 After two failures occur within any 24-hour period, future runs stop before opening a browser or attempting a USCIS login. This block remains in place until the failure log is manually cleared, even after 24 hours have passed. Blocked cron runs print an error to `data/cron.log` but do not append another failure or send repeated Telegram alerts.
 

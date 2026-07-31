@@ -184,7 +184,7 @@ class MainTests(unittest.TestCase):
             Path("/var/lib/fusi/failure-log.jsonl"),
             "login failed",
         )
-        self.assertEqual(send_message_mock.call_args.args[1], "updates")
+        self.assertEqual(send_message_mock.call_args.args[1], "no-updates")
         notification = send_message_mock.call_args.args[2]
         self.assertIn("fast-uscis failed: login failed", notification)
         self.assertIn("Further USCIS attempts are blocked", notification)
