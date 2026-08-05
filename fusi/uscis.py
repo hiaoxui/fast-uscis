@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime
 import json
 import time
 from typing import Any
@@ -33,8 +34,12 @@ class USCISCaseResult:
 
     @property
     def updated_at(self) -> str | None:
-        raw_updated_at = self.payload['data'].get("updatedAt")
-        return raw_updated_at if isinstance(raw_updated_at, str) else None
+        raw_updated_at = self.payload['data'].get("updatedAtTimestamp")
+        if not isinstance(raw_updated_at, str):
+            return None
+        return datetime.fromisoformat(raw_updated_at).astimezone().isoformat(
+            timespec="milliseconds"
+        )
 
     @property
     def events(self) -> list[dict[str, Any]]:

@@ -11,7 +11,7 @@ The tool:
 3. Uses a real Firefox browser session through Playwright.
 4. Completes the `myaccount.uscis.gov` to `my.uscis.gov` handoff.
 5. Fetches every configured receipt from `/account/case-service/api/cases/<receipt_number>`.
-6. Caches each case's latest `updatedAt` value in `case-cache.json`.
+6. Converts each case's precise `updatedAtTimestamp` to local time and caches it in `case-cache.json`.
 7. Prints full events on first observation, changed cases on later runs, or an unchanged summary.
 
 ## Environment Setup
@@ -166,10 +166,10 @@ The login flow is implemented with Playwright instead of raw HTTP requests becau
 
 ## Output
 
-On the first run, the CLI prints each case's raw `events` array as formatted JSON and caches its latest `updatedAt` value. Later runs print only changed cases in this form:
+On the first run, the CLI prints each case's raw `events` array as formatted JSON and caches its latest `updatedAtTimestamp` in the machine's local time zone. Later runs print only changed cases in this form:
 
 ```text
-example I-485 got an update at 2026-06-24
+example I-485 got an update at 2026-06-24T14:35:45.392-04:00
 [
   ...
 ]

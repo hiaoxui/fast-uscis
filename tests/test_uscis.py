@@ -1,3 +1,5 @@
+import os
+import time
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -32,18 +34,25 @@ def build_page_with_response(*, status: int = 200, payload: dict | None = None) 
 
 
 class USCISCaseResultTests(unittest.TestCase):
-    def test_updated_at_comes_from_case_data(self) -> None:
-        result = USCISCaseResult(
-            receipt_number="IOE1",
-            payload={
-                "data": {
-                    "updatedAt": "2026-06-24",
-                    "events": [{"updatedAt": "2026-07-23"}],
-                }
-            },
-        )
+    @unittest.skipUnless(hasattr(time, "tzset"), "requires time.tzset")
+    def test_updated_at_timestamp_is_converted_to_local_time(self) -> None:
+        try:
+            with patch.dict(os.environ, {"TZ": "America/New_York"}):
+                time.tzset()
+                result = USCISCaseResult(
+                    receipt_number="IOE1",
+                    payload={
+                        "data": {
+                            "updatedAt": "2026-06-24",
+                            "updatedAtTimestamp": "2026-06-24T18:35:45.392Z",
+                            "events": [{"updatedAt": "2026-07-23"}],
+                        }
+                    },
+                )
 
-        self.assertEqual(result.updated_at, "2026-06-24")
+                self.assertEqual(result.updated_at, "2026-06-24T14:35:45.392-04:00")
+        finally:
+            time.tzset()
 
 
 class SubmitVerificationCodeTests(unittest.TestCase):
