@@ -8,33 +8,46 @@ from unittest.mock import MagicMock, patch
 from fusi.cli import build_parser, case_output, main
 from fusi.config import AccountConfig, AppConfig, TelegramConfig
 from fusi.failures import FailureRecord
-from fusi.uscis import USCISLoginError
+from fusi.uscis import CaseUpdate, USCISLoginError
 from datetime import datetime, timezone
 
 
 class CaseOutputTests(unittest.TestCase):
-    def test_uses_case_updated_at_instead_of_event_timestamps(self) -> None:
+    def test_prints_only_newest_item_and_identifies_update_type(self) -> None:
         cache: dict[str, dict[str, str | None]] = {}
-        events: list[dict[str, object]] = [
-            {"updatedAt": "2026-07-23", "eventCode": "IAF"}
-        ]
+        item = {"eventId": "event-1", "eventCode": "IAF"}
 
         first_output = case_output(
-            "primary", "I-485", "IOE1", "2026-06-24", events, cache
+            "primary",
+            "I-485",
+            "IOE1",
+            CaseUpdate("event", "2026-06-24", item),
+            cache,
         )
         unchanged_output = case_output(
-            "primary", "I-485", "IOE1", "2026-06-24", events, cache
+            "primary",
+            "I-485",
+            "IOE1",
+            CaseUpdate("event", "2026-06-24", item),
+            cache,
         )
         updated_output = case_output(
-            "primary", "I-485", "IOE1", "2026-07-19", events, cache
+            "primary",
+            "I-485",
+            "IOE1",
+            CaseUpdate("silent", "2026-07-19"),
+            cache,
         )
 
-        self.assertEqual(first_output, json.dumps(events, indent=2))
+        self.assertEqual(
+            first_output,
+            "primary I-485 got an event update at 2026-06-24\n"
+            f"{json.dumps(item, indent=2)}",
+        )
         self.assertIsNone(unchanged_output)
         self.assertEqual(
             updated_output,
-            "primary I-485 got an update at 2026-07-19\n"
-            f"{json.dumps(events, indent=2)}",
+            "primary I-485 got a silent update at 2026-07-19",
         )
         self.assertEqual(cache["primary"]["IOE1"], "2026-07-19")
 
@@ -78,14 +91,16 @@ class MainTests(unittest.TestCase):
         first_result = SimpleNamespace(
             payload={"data": {"updatedAt": "2026-06-24"}},
             receipt_number="IOE1",
-            updated_at="2026-06-24",
-            events=[{"updatedAt": "2026-06-24"}],
+            latest_update=MagicMock(
+                return_value=CaseUpdate("silent", "2026-06-24")
+            ),
         )
         second_result = SimpleNamespace(
             payload={"data": {"updatedAt": "2026-07-01"}},
             receipt_number="IOE2",
-            updated_at="2026-07-01",
-            events=[{"updatedAt": "2026-07-01"}],
+            latest_update=MagicMock(
+                return_value=CaseUpdate("silent", "2026-07-01")
+            ),
         )
 
         with (

@@ -27,6 +27,7 @@ class TelegramConfig:
 class AppConfig:
     accounts: dict[str, AccountConfig]
     telegram: TelegramConfig | None
+    event_id_blacklist: frozenset[str] = frozenset()
 
 
 def load_config(path: Path) -> AppConfig:
@@ -62,7 +63,20 @@ def load_config(path: Path) -> AppConfig:
             receipts=receipts,
         )
 
-    return AppConfig(accounts=accounts, telegram=_load_telegram(data))
+    return AppConfig(
+        accounts=accounts,
+        telegram=_load_telegram(data),
+        event_id_blacklist=_load_event_id_blacklist(data),
+    )
+
+
+def _load_event_id_blacklist(data: dict[str, object]) -> frozenset[str]:
+    raw_blacklist = data.get("event_id_blacklist", [])
+    if not isinstance(raw_blacklist, list) or not all(
+        isinstance(event_id, str) and event_id for event_id in raw_blacklist
+    ):
+        raise ConfigError("event_id_blacklist must be a list of non-empty strings.")
+    return frozenset(raw_blacklist)
 
 
 def _load_telegram(data: dict[str, object]) -> TelegramConfig | None:

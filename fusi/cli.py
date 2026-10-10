@@ -18,7 +18,7 @@ from fusi.failures import (
     load_failures,
 )
 from fusi.telegram import TelegramDeliveryError, send_message_sync
-from fusi.uscis import USCISChallengeError, USCISError, USCISSession
+from fusi.uscis import CaseUpdate, USCISChallengeError, USCISError, USCISSession
 
 CONFIG_FILENAME = "config.toml"
 CACHE_FILENAME = "case-cache.json"
@@ -103,8 +103,7 @@ def main(argv: list[str] | None = None) -> int:
                         account.name,
                         label,
                         result.receipt_number,
-                        result.updated_at,
-                        result.events,
+                        result.latest_update(app_config.event_id_blacklist),
                         cache,
                     )
                     if output is not None:
@@ -175,8 +174,7 @@ def case_output(
     account_name: str,
     label: str,
     receipt_number: str,
-    updated_at: str | None,
-    events: list[dict[str, object]],
+    update: CaseUpdate,
     cache: CaseCache,
 ) -> str | None:
     was_cached, previous_timestamp = cached_timestamp(
@@ -184,11 +182,16 @@ def case_output(
         account_name,
         receipt_number,
     )
-    update_timestamp(cache, account_name, receipt_number, updated_at)
+    update_timestamp(cache, account_name, receipt_number, update.timestamp)
 
-    body = json.dumps(events, indent=2)
-    if not was_cached:
-        return body
-    if previous_timestamp != updated_at:
-        return f"{account_name} {label} got an update at {updated_at}\n{body}"
-    return None
+    if was_cached and previous_timestamp == update.timestamp:
+        return None
+
+    article = "an" if update.kind == "event" else "a"
+    header = (
+        f"{account_name} {label} got {article} {update.kind} update at "
+        f"{update.timestamp}"
+    )
+    if update.item is None:
+        return header
+    return f"{header}\n{json.dumps(update.item, indent=2)}"

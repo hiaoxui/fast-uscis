@@ -35,7 +35,7 @@ def build_page_with_response(*, status: int = 200, payload: dict | None = None) 
 
 class USCISCaseResultTests(unittest.TestCase):
     @unittest.skipUnless(hasattr(time, "tzset"), "requires time.tzset")
-    def test_updated_at_timestamp_is_converted_to_local_time(self) -> None:
+    def test_selects_newest_timestamp_and_converts_it_to_local_time(self) -> None:
         try:
             with patch.dict(os.environ, {"TZ": "America/New_York"}):
                 time.tzset()
@@ -45,14 +45,75 @@ class USCISCaseResultTests(unittest.TestCase):
                         "data": {
                             "updatedAt": "2026-06-24",
                             "updatedAtTimestamp": "2026-06-24T18:35:45.392Z",
-                            "events": [{"updatedAt": "2026-07-23"}],
+                            "notices": [
+                                {
+                                    "letterId": "notice-1",
+                                    "generationDate": "2026-06-25T10:00:00.000Z",
+                                }
+                            ],
+                            "events": [
+                                {
+                                    "eventId": "event-1",
+                                    "createdAtTimestamp": "2026-06-26T18:35:45.392Z",
+                                }
+                            ],
                         }
                     },
                 )
 
-                self.assertEqual(result.updated_at, "2026-06-24T14:35:45.392-04:00")
+                update = result.latest_update(frozenset())
+
+                self.assertEqual(update.kind, "event")
+                self.assertEqual(update.timestamp, "2026-06-26T14:35:45.392-04:00")
+                assert update.item is not None
+                self.assertEqual(update.item["eventId"], "event-1")
         finally:
             time.tzset()
+
+    def test_ignores_blacklisted_events_completely(self) -> None:
+        result = USCISCaseResult(
+            receipt_number="IOE1",
+            payload={
+                "data": {
+                    "updatedAtTimestamp": "2026-06-24T18:35:45.392Z",
+                    "notices": [
+                        {
+                            "letterId": "notice-1",
+                            "generationDate": "2026-06-25T10:00:00.000Z",
+                        }
+                    ],
+                    "events": [
+                        {
+                            "eventId": "bad-event",
+                            "createdAtTimestamp": "2026-07-26T18:35:45.392Z",
+                        }
+                    ],
+                }
+            },
+        )
+
+        update = result.latest_update(frozenset({"bad-event"}))
+
+        self.assertEqual(update.kind, "notice")
+        assert update.item is not None
+        self.assertEqual(update.item["letterId"], "notice-1")
+
+    def test_prefers_actionable_item_when_timestamps_match(self) -> None:
+        timestamp = "2026-06-24T18:35:45.392Z"
+        result = USCISCaseResult(
+            receipt_number="IOE1",
+            payload={
+                "data": {
+                    "updatedAtTimestamp": timestamp,
+                    "notices": [{"generationDate": timestamp}],
+                    "events": [
+                        {"eventId": "event-1", "createdAtTimestamp": timestamp}
+                    ],
+                }
+            },
+        )
+
+        self.assertEqual(result.latest_update(frozenset()).kind, "event")
 
 
 class SubmitVerificationCodeTests(unittest.TestCase):

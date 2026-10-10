@@ -1,3 +1,7 @@
+event_id_blacklist = [
+  # "event-id-to-ignore",
+]
+
 [accounts]
 
 [accounts.example]

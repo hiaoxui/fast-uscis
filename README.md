@@ -11,8 +11,8 @@ The tool:
 3. Uses a real Firefox browser session through Playwright.
 4. Completes the `myaccount.uscis.gov` to `my.uscis.gov` handoff.
 5. Fetches every configured receipt from `/account/case-service/api/cases/<receipt_number>`.
-6. Converts each case's precise `updatedAtTimestamp` to local time and caches it in `case-cache.json`.
-7. Prints full events on first observation, changed cases on later runs, or an unchanged summary.
+6. Finds the newest timestamp across `updatedAtTimestamp`, notice `generationDate`, and event `createdAtTimestamp`, then converts it to local time and caches it in `case-cache.json`.
+7. Prints only the newest notice or event, identifies timestamp-only changes as silent updates, or prints an unchanged summary.
 
 ## Environment Setup
 
@@ -43,6 +43,10 @@ Create a `config.toml` in the data directory. The current directory is used by d
 Example:
 
 ```toml
+event_id_blacklist = [
+  "event-id-known-to-be-invalid",
+]
+
 [accounts]
 
 [accounts.example]
@@ -65,6 +69,7 @@ Notes:
 
 - Each account must define `email`, `password`, and `totp_secret`.
 - Each account must define at least one receipt under `receipts`.
+- `event_id_blacklist` is an optional global list. Matching USCIS events are ignored for both update detection and output.
 - Every run checks every account and receipt configured in `config.toml`.
 - First-run results and case updates are sent to `update_chat_id`.
 - Failures and the `No case updates were found.` summary are sent to `no_update_chat_id`.
@@ -166,28 +171,18 @@ The login flow is implemented with Playwright instead of raw HTTP requests becau
 
 ## Output
 
-On the first run, the CLI prints each case's raw `events` array as formatted JSON and caches its latest `updatedAtTimestamp` in the machine's local time zone. Later runs print only changed cases in this form:
+The CLI compares the case-level `updatedAtTimestamp`, each notice's `generationDate`, and each non-blacklisted event's `createdAtTimestamp`. It caches the newest timestamp in the machine's local time zone. For notice and event updates, only the newest item is printed:
 
 ```text
-example I-485 got an update at 2026-06-24T14:35:45.392-04:00
-[
-  ...
-]
+example I-485 got an event update at 2026-06-24T14:35:45.392-04:00
+{
+  "eventId": "...",
+  "createdAtTimestamp": "2026-06-24T18:35:45.392Z"
+}
 ```
 
-When no timestamps changed, it prints:
+If only `updatedAtTimestamp` is newest, the message identifies the change as a silent update and does not print an unrelated notice or event. When no timestamps changed, it prints:
 
 ```text
 No case updates were found.
-```
-
-Example shape:
-
-```json
-[
-  {
-    "created_at": "2026-04-01T12:34:56.000Z",
-    "event_name": "Case Was Received"
-  }
-]
 ```

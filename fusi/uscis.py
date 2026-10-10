@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime
 import json
 import time
-from typing import Any
+from typing import Any, Literal
 
 import pyotp
 from playwright.sync_api import Browser, BrowserContext, Page, Response, sync_playwright
@@ -28,23 +28,110 @@ class USCISVerificationError(USCISError):
 
 
 @dataclass(frozen=True)
+class CaseUpdate:
+    kind: Literal["silent", "notice", "event"]
+    timestamp: str
+    item: dict[str, Any] | None = None
+
+
+@dataclass(frozen=True)
 class USCISCaseResult:
     receipt_number: str
     payload: dict[str, Any]
 
-    @property
-    def updated_at(self) -> str | None:
-        raw_updated_at = self.payload['data'].get("updatedAtTimestamp")
-        if not isinstance(raw_updated_at, str):
-            return None
-        return datetime.fromisoformat(raw_updated_at).astimezone().isoformat(
-            timespec="milliseconds"
+    def latest_update(self, event_id_blacklist: frozenset[str]) -> CaseUpdate:
+        data = self.payload.get("data")
+        if not isinstance(data, dict):
+            raise USCISError(
+                f"Case {self.receipt_number} response does not contain a data object."
+            )
+
+        candidates: list[
+            tuple[datetime, int, Literal["silent", "notice", "event"], dict[str, Any] | None]
+        ] = []
+        self._append_candidate(
+            candidates,
+            data.get("updatedAtTimestamp"),
+            kind="silent",
+            priority=0,
         )
 
-    @property
-    def events(self) -> list[dict[str, Any]]:
-        raw_events = self.payload['data'].get("events", [])
-        return raw_events if isinstance(raw_events, list) else []
+        notices = data.get("notices", [])
+        if not isinstance(notices, list):
+            raise USCISError(f"Case {self.receipt_number} notices must be a list.")
+        for notice in notices:
+            if not isinstance(notice, dict):
+                raise USCISError(
+                    f"Case {self.receipt_number} contains an invalid notice."
+                )
+            self._append_candidate(
+                candidates,
+                notice.get("generationDate"),
+                kind="notice",
+                priority=1,
+                item=notice,
+            )
+
+        events = data.get("events", [])
+        if not isinstance(events, list):
+            raise USCISError(f"Case {self.receipt_number} events must be a list.")
+        for event in events:
+            if not isinstance(event, dict):
+                raise USCISError(
+                    f"Case {self.receipt_number} contains an invalid event."
+                )
+            if event.get("eventId") in event_id_blacklist:
+                continue
+            self._append_candidate(
+                candidates,
+                event.get("createdAtTimestamp"),
+                kind="event",
+                priority=2,
+                item=event,
+            )
+
+        if not candidates:
+            raise USCISError(
+                f"Case {self.receipt_number} response has no usable update timestamp."
+            )
+
+        timestamp, _, kind, item = max(candidates, key=lambda candidate: candidate[:2])
+        return CaseUpdate(
+            kind=kind,
+            timestamp=timestamp.astimezone().isoformat(timespec="milliseconds"),
+            item=item,
+        )
+
+    def _append_candidate(
+        self,
+        candidates: list[
+            tuple[datetime, int, Literal["silent", "notice", "event"], dict[str, Any] | None]
+        ],
+        raw_timestamp: object,
+        *,
+        kind: Literal["silent", "notice", "event"],
+        priority: int,
+        item: dict[str, Any] | None = None,
+    ) -> None:
+        if raw_timestamp is None:
+            return
+        if not isinstance(raw_timestamp, str):
+            raise USCISError(
+                f"Case {self.receipt_number} has a non-string {kind} timestamp."
+            )
+        try:
+            timestamp = datetime.fromisoformat(raw_timestamp)
+        except ValueError as exc:
+            raise USCISError(
+                f"Case {self.receipt_number} has an invalid {kind} timestamp: "
+                f"{raw_timestamp!r}."
+            ) from exc
+        if timestamp.tzinfo is None:
+            raise USCISError(
+                f"Case {self.receipt_number} has a timezone-less {kind} timestamp: "
+                f"{raw_timestamp!r}."
+            )
+        candidates.append((timestamp, priority, kind, item))
 
 
 class USCISSession:
